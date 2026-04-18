@@ -1,0 +1,118 @@
+namespace Am.Yaml {
+
+    class YamlArray {
+        import Am.Lang
+        import Am.Collections
+
+        private var elements: List<YamlValue> = List.newList<YamlValue>()
+
+        public fun addString(value: String) {
+            this.elements.add(YamlValue.fromString(value))
+        }
+
+        public fun addInt(value: Int) {
+            this.elements.add(YamlValue.fromInteger(value))
+        }
+
+        public fun addLong(value: Long) {
+            this.elements.add(YamlValue.fromLong(value))
+        }
+
+        public fun addDouble(value: Double) {
+            this.elements.add(YamlValue.fromDouble(value))
+        }
+
+        public fun addFloat(value: Float) {
+            this.elements.add(YamlValue.fromFloat(value))
+        }
+
+        public fun addNumber(value: String) {
+            this.elements.add(YamlValue.fromNumber(value))
+        }
+
+        public fun addBool(value: Bool) {
+            this.elements.add(YamlValue.fromBool(value))
+        }
+
+        public fun addObject(value: YamlObject) {
+            this.elements.add(YamlValue.fromObject(value))
+        }
+
+        public fun addArray(value: YamlArray) {
+            this.elements.add(YamlValue.fromArray(value))
+        }
+
+        public fun addNull() {
+            this.elements.add(YamlValue.fromNull())
+        }
+
+        public fun addValue(value: YamlValue) {
+            this.elements.add(value)
+        }
+
+        public fun getValue(index: Int): YamlValue {
+            return this.elements.get(index)
+        }
+
+        public fun getString(index: Int): String {
+            var v = this.elements.get(index)
+            return v.asString()
+        }
+
+        public fun getInt(index: Int): Int {
+            var v = this.elements.get(index)
+            return v.asInteger()
+        }
+
+        public fun getLong(index: Int): Long {
+            var v = this.elements.get(index)
+            return v.asLong()
+        }
+
+        public fun getBool(index: Int): Bool {
+            var v = this.elements.get(index)
+            return v.asBool()
+        }
+
+        public fun getObject(index: Int): YamlObject {
+            var v = this.elements.get(index)
+            return v.asObject()
+        }
+
+        public fun getArray(index: Int): YamlArray {
+            var v = this.elements.get(index)
+            return v.asArray()
+        }
+
+        public fun size(): Int {
+            return this.elements.getSize()
+        }
+
+        public fun isEmpty(): Bool {
+            return this.elements.isEmpty()
+        }
+
+        override fun toString(): String {
+            var result = "["
+            var first = true
+
+            var i = 0
+            while (i < this.elements.getSize()) {
+                var value = this.elements.get(i)
+
+                if (!first) {
+                    result = result + ", "
+                }
+
+                if (value != null) {
+                    result = result + value.toString()
+                }
+                first = false
+                i = i + 1
+            }
+
+            result = result + "]"
+            return result
+        }
+    }
+}

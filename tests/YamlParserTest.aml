@@ -1,0 +1,107 @@
+namespace Am.Yaml.Tests {
+    class YamlParserTest {
+        import Am.Lang
+        import Am.Yaml
+        import Am.Tests
+        import Am.Util.Parsers.Text
+        import Am.IO
+
+        test parseSimpleMapping() {
+            var newlineBytes: UByte[] = [10UB]
+            var nl: String = String.fromBytes(newlineBytes, "UTF-8")
+            var yamlStr: String = "name: John" + nl + "age: 30" + nl
+            var textParser: TextParser = new TextParser(yamlStr)
+            var yamlParser: YamlParser = new YamlParser(textParser)
+            var root = yamlParser.parse()
+            var obj: YamlObject = root.asObject()
+            var name: String = obj.getString("name")
+            var age: String = obj.getString("age")
+            Assert.assertTrue(name == "John")
+            Assert.assertTrue(age == "30")
+        }
+
+        test parseSimpleSequence() {
+            var newlineBytes: UByte[] = [10UB]
+            var nl: String = String.fromBytes(newlineBytes, "UTF-8")
+            var yamlStr: String = "- apple" + nl + "- banana" + nl + "- cherry" + nl
+            var textParser: TextParser = new TextParser(yamlStr)
+            var yamlParser: YamlParser = new YamlParser(textParser)
+            var root = yamlParser.parse()
+            var arr: YamlArray = root.asArray()
+            Assert.assertTrue(arr.size() == 3)
+            Assert.assertTrue(arr.getString(0) == "apple")
+            Assert.assertTrue(arr.getString(1) == "banana")
+            Assert.assertTrue(arr.getString(2) == "cherry")
+        }
+
+        test parseBoolAndNull() {
+            var newlineBytes: UByte[] = [10UB]
+            var nl: String = String.fromBytes(newlineBytes, "UTF-8")
+            var yamlStr: String = "enabled: true" + nl + "disabled: false" + nl + "nothing: null" + nl
+            var textParser: TextParser = new TextParser(yamlStr)
+            var yamlParser: YamlParser = new YamlParser(textParser)
+            var root = yamlParser.parse()
+            var obj: YamlObject = root.asObject()
+            Assert.assertTrue(obj.getBool("enabled") == true)
+            Assert.assertTrue(obj.getBool("disabled") == false)
+            var nothing = obj.getValue("nothing")
+            Assert.assertTrue(nothing.isNull())
+        }
+
+        test parseNestedMapping() {
+            var newlineBytes: UByte[] = [10UB]
+            var nl: String = String.fromBytes(newlineBytes, "UTF-8")
+            var yamlStr: String = "person:" + nl + "  name: John" + nl + "  age: 30" + nl
+            var textParser: TextParser = new TextParser(yamlStr)
+            var yamlParser: YamlParser = new YamlParser(textParser)
+            var root = yamlParser.parse()
+            var obj: YamlObject = root.asObject()
+            var person: YamlObject = obj.getObject("person")
+            Assert.assertTrue(person.getString("name") == "John")
+            Assert.assertTrue(person.getString("age") == "30")
+        }
+
+        test parsePackageYamlFile() {
+            var file: File = new File("assets/package.yml")
+            var stream: FileStream = new FileStream(file, FileAccess.readOnly)
+            var textStream: TextStream = new TextStream(stream)
+            var content: String = textStream.readString()
+            var textParser: TextParser = new TextParser(content)
+            var yamlParser: YamlParser = new YamlParser(textParser)
+            var root = yamlParser.parse()
+            var obj: YamlObject = root.asObject()
+
+            Assert.assertTrue(obj.getString("id") == "am-yaml")
+            Assert.assertTrue(obj.getString("version") == "1.0.0")
+            Assert.assertTrue(obj.getString("type") == "application")
+
+            // dependencies array
+            var deps: YamlArray = obj.getArray("dependencies")
+            Assert.assertTrue(deps.size() == 2)
+            var dep0: YamlObject = deps.getObject(0)
+            Assert.assertTrue(dep0.getString("id") == "am-lang-core")
+            Assert.assertTrue(dep0.getString("realm") == "github")
+            Assert.assertTrue(dep0.getString("tag") == "latest")
+            var dep1: YamlObject = deps.getObject(1)
+            Assert.assertTrue(dep1.getString("id") == "am-tests")
+            Assert.assertTrue(dep1.getBool("testOnly") == true)
+
+            // platforms array
+            var platforms: YamlArray = obj.getArray("platforms")
+            Assert.assertTrue(platforms.size() == 2)
+            var plat0: YamlObject = platforms.getObject(0)
+            Assert.assertTrue(plat0.getString("id") == "libc")
+            Assert.assertTrue(plat0.getBool("abstract") == true)
+            var plat1: YamlObject = platforms.getObject(1)
+            Assert.assertTrue(plat1.getString("id") == "linux-x64")
+            Assert.assertTrue(plat1.getString("extends") == "libc")
+
+            // buildTargets array
+            var targets: YamlArray = obj.getArray("buildTargets")
+            Assert.assertTrue(targets.size() == 1)
+            var target0: YamlObject = targets.getObject(0)
+            Assert.assertTrue(target0.getString("id") == "linux-x64")
+            Assert.assertTrue(target0.getString("platform") == "linux-x64")
+        }
+    }
+}

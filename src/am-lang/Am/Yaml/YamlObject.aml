@@ -1,0 +1,158 @@
+namespace Am.Yaml {
+
+    class YamlObject {
+        import Am.Lang
+        import Am.Collections
+
+        private var properties: HashMap<String, YamlValue> = new HashMap<String, YamlValue>()
+
+        public fun putString(key: String, value: String) {
+            this.properties.set(key, YamlValue.fromString(value))
+        }
+
+        public fun putInt(key: String, value: Int) {
+            this.properties.set(key, YamlValue.fromInteger(value))
+        }
+
+        public fun putLong(key: String, value: Long) {
+            this.properties.set(key, YamlValue.fromLong(value))
+        }
+
+        public fun putDouble(key: String, value: Double) {
+            this.properties.set(key, YamlValue.fromDouble(value))
+        }
+
+        public fun putFloat(key: String, value: Float) {
+            this.properties.set(key, YamlValue.fromFloat(value))
+        }
+
+        public fun putNumber(key: String, value: String) {
+            this.properties.set(key, YamlValue.fromNumber(value))
+        }
+
+        public fun putBool(key: String, value: Bool) {
+            this.properties.set(key, YamlValue.fromBool(value))
+        }
+
+        public fun putObject(key: String, value: YamlObject) {
+            this.properties.set(key, YamlValue.fromObject(value))
+        }
+
+        public fun putArray(key: String, value: YamlArray) {
+            this.properties.set(key, YamlValue.fromArray(value))
+        }
+
+        public fun putNull(key: String) {
+            this.properties.set(key, YamlValue.fromNull())
+        }
+
+        public fun putValue(key: String, value: YamlValue) {
+            this.properties.set(key, value)
+        }
+
+        public fun getValue(key: String): YamlValue {
+            return this.properties.get(key)
+        }
+
+        public fun getString(key: String): String {
+            var v = this.properties.get(key)
+            if (v != null) {
+                return v.asString()
+            }
+            throw new Exception("Key '" + key + "' not found")
+        }
+
+        public fun getInt(key: String): Int {
+            var v = this.properties.get(key)
+            if (v != null) {
+                return v.asInteger()
+            }
+            throw new Exception("Key '" + key + "' not found")
+        }
+
+        public fun getLong(key: String): Long {
+            var v = this.properties.get(key)
+            if (v != null) {
+                return v.asLong()
+            }
+            throw new Exception("Key '" + key + "' not found")
+        }
+
+        public fun getDouble(key: String): Double {
+            var v = this.properties.get(key)
+            if (v != null) {
+                return v.asDouble()
+            }
+            throw new Exception("Key '" + key + "' not found")
+        }
+
+        public fun getBool(key: String): Bool {
+            var v = this.properties.get(key)
+            if (v != null) {
+                return v.asBool()
+            }
+            throw new Exception("Key '" + key + "' not found")
+        }
+
+        public fun getObject(key: String): YamlObject {
+            var v = this.properties.get(key)
+            if (v != null) {
+                return v.asObject()
+            }
+            throw new Exception("Key '" + key + "' not found")
+        }
+
+        public fun getArray(key: String): YamlArray {
+            var v = this.properties.get(key)
+            if (v != null) {
+                return v.asArray()
+            }
+            throw new Exception("Key '" + key + "' not found")
+        }
+
+        public fun has(key: String): Bool {
+            return this.properties.containsKey(key)
+        }
+
+        public fun remove(key: String): Bool {
+            return this.properties.remove(key)
+        }
+
+        public fun keys(): List<String> {
+            return this.properties.buildKeys()
+        }
+
+        public fun size(): Int {
+            return this.properties.getSize()
+        }
+
+        public fun isEmpty(): Bool {
+            return this.properties.isEmpty()
+        }
+
+        override fun toString(): String {
+            var result = "{"
+            var keys = this.keys()
+            var first = true
+
+            var i = 0
+            while (i < keys.getSize()) {
+                var key = keys.get(i)
+                var value = this.getValue(key)
+
+                if (!first) {
+                    result = result + ", "
+                }
+
+                if (value != null) {
+                    result = result + key + ": " + value.toString()
+                }
+                first = false
+                i = i + 1
+            }
+
+            result = result + "}"
+            return result
+        }
+    }
+}

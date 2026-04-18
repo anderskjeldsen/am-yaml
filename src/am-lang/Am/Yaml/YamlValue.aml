@@ -1,0 +1,196 @@
+namespace Am.Yaml {
+
+    enum YamlValueType {
+        stringType = 1
+        numberType = 2
+        boolType = 3
+        nullType = 4
+        objectType = 5
+        arrayType = 6
+    }
+
+    class YamlValue(private var value: Any, private var type: YamlValueType) {
+        import Am.Lang
+
+        public fun getValue(): Any {
+            return this.value
+        }
+
+        public fun getType(): YamlValueType {
+            return this.type
+        }
+
+        public fun isString(): Bool {
+            return this.type == YamlValueType.stringType
+        }
+
+        public fun isNumber(): Bool {
+            return this.type == YamlValueType.numberType
+        }
+
+        public fun isBool(): Bool {
+            return this.type == YamlValueType.boolType
+        }
+
+        public fun isNull(): Bool {
+            return this.type == YamlValueType.nullType
+        }
+
+        public fun isObject(): Bool {
+            return this.type == YamlValueType.objectType
+        }
+
+        public fun isArray(): Bool {
+            return this.type == YamlValueType.arrayType
+        }
+
+        public fun asString(): String {
+            if (this.type == YamlValueType.stringType || this.type == YamlValueType.numberType) {
+                return this.value as String
+            } else {
+                throw new Exception("YamlValue is not a string")
+            }
+        }
+
+        public fun asInteger(): Int {
+            if (this.type == YamlValueType.numberType) {
+                var stringValue = this.value as String
+                return Int.parse(stringValue)
+            } else {
+                throw new Exception("YamlValue is not a number")
+            }
+        }
+
+        public fun asLong(): Long {
+            if (this.type == YamlValueType.numberType) {
+                var stringValue = this.value as String
+                return Long.parse(stringValue)
+            } else {
+                throw new Exception("YamlValue is not a number")
+            }
+        }
+
+        public fun asByte(): Byte {
+            if (this.type == YamlValueType.numberType) {
+                var stringValue = this.value as String
+                return Byte.parse(stringValue)
+            } else {
+                throw new Exception("YamlValue is not a number")
+            }
+        }
+
+        public fun asShort(): Short {
+            if (this.type == YamlValueType.numberType) {
+                var stringValue = this.value as String
+                return Short.parse(stringValue)
+            } else {
+                throw new Exception("YamlValue is not a number")
+            }
+        }
+
+        public fun asDouble(): Double {
+            if (this.type == YamlValueType.numberType) {
+                var stringValue = this.value as String
+                return Double.parse(stringValue)
+            } else {
+                throw new Exception("YamlValue is not a number")
+            }
+        }
+
+        public fun asFloat(): Float {
+            if (this.type == YamlValueType.numberType) {
+                var stringValue = this.value as String
+                return Float.parse(stringValue)
+            } else {
+                throw new Exception("YamlValue is not a number")
+            }
+        }
+
+        public fun asBool(): Bool {
+            if (this.type == YamlValueType.boolType) {
+                return this.value as Bool
+            } else {
+                throw new Exception("YamlValue is not a boolean")
+            }
+        }
+
+        public fun asObject(): YamlObject {
+            if (this.type == YamlValueType.objectType) {
+                return this.value as YamlObject
+            } else {
+                throw new Exception("YamlValue is not an object")
+            }
+        }
+
+        public fun asArray(): YamlArray {
+            if (this.type == YamlValueType.arrayType) {
+                return this.value as YamlArray
+            } else {
+                throw new Exception("YamlValue is not an array")
+            }
+        }
+
+        static fun fromString(value: String): YamlValue {
+            return new YamlValue(value, YamlValueType.stringType)
+        }
+
+        static fun fromNumber(value: String): YamlValue {
+            return new YamlValue(value, YamlValueType.numberType)
+        }
+
+        static fun fromInteger(value: Int): YamlValue {
+            return new YamlValue(value.toString(), YamlValueType.numberType)
+        }
+
+        static fun fromLong(value: Long): YamlValue {
+            return new YamlValue(value.toString(), YamlValueType.numberType)
+        }
+
+        static fun fromDouble(value: Double): YamlValue {
+            return new YamlValue(value.toString(), YamlValueType.numberType)
+        }
+
+        static fun fromFloat(value: Float): YamlValue {
+            return new YamlValue(value.toString(), YamlValueType.numberType)
+        }
+
+        static fun fromBool(value: Bool): YamlValue {
+            return new YamlValue(value, YamlValueType.boolType)
+        }
+
+        static fun fromObject(value: YamlObject): YamlValue {
+            return new YamlValue(value, YamlValueType.objectType)
+        }
+
+        static fun fromArray(value: YamlArray): YamlValue {
+            return new YamlValue(value, YamlValueType.arrayType)
+        }
+
+        static fun fromNull(): YamlValue {
+            var nullValue: Any = null
+            return new YamlValue(nullValue, YamlValueType.nullType)
+        }
+
+        override fun toString(): String {
+            if (this.type == YamlValueType.stringType) {
+                return this.asString()
+            } else if (this.type == YamlValueType.numberType) {
+                return this.value as String
+            } else if (this.type == YamlValueType.boolType) {
+                if (this.asBool()) {
+                    return "true"
+                } else {
+                    return "false"
+                }
+            } else if (this.type == YamlValueType.nullType) {
+                return "null"
+            } else if (this.type == YamlValueType.objectType) {
+                return this.asObject().toString()
+            } else if (this.type == YamlValueType.arrayType) {
+                return this.asArray().toString()
+            } else {
+                return "unknown"
+            }
+        }
+    }
+}

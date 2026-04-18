@@ -1,0 +1,347 @@
+namespace Am.Yaml {
+
+    class YamlParser(private var parser: TextParser) {
+        import Am.Lang
+        import Am.Util.Parsers.Text
+
+        // ASCII codes
+        private static var space: UShort = 32US
+        private static var tab: UShort = 9US
+        private static var newLine: UShort = 10US
+        private static var carriageReturn: UShort = 13US
+        private static var hash: UShort = 35US
+        private static var colon: UShort = 58US
+        private static var dash: UShort = 45US
+        private static var pipe: UShort = 124US
+        private static var gt: UShort = 62US
+        private static var dot: UShort = 46US
+
+        fun parse(): YamlValue {
+            return this.parseValue(0)
+        }
+
+        private fun skipLine() {
+            this.parser.skipUntil((c) => return c == 10US || c == 13US)
+            this.skipLineEnding()
+        }
+
+        private fun skipLineEnding() {
+            while (this.parser.hasMore()) {
+                var c = this.parser.peekChar()
+                if (c == YamlParser.newLine || c == YamlParser.carriageReturn) {
+                    this.parser.skip(1UI)
+                } else {
+                    break
+                }
+            }
+        }
+
+        private fun skipEmptyAndCommentLines() {
+            var go = true
+            while (go && this.parser.hasMore()) {
+                var c = this.parser.peekChar()
+                if (c == YamlParser.newLine || c == YamlParser.carriageReturn) {
+                    this.parser.skip(1UI)
+                } else if (c == YamlParser.hash) {
+                    this.skipLine()
+                } else {
+                    go = false
+                }
+            }
+        }
+
+        private fun isNumberString(s: String): Bool {
+            var len = s.getLength()
+            if (len == 0) {
+                return false
+            }
+            var start = 0
+            var first = s.characterAt(0UI)
+            if (first == 45US) {
+                start = 1
+            }
+            if (start >= len) {
+                return false
+            }
+            var hasDot = false
+            var i = start
+            while (i < len) {
+                var ch = s.characterAt(i.toUInt())
+                if (ch == 46US) {
+                    if (hasDot) {
+                        return false
+                    }
+                    hasDot = true
+                } else if (ch < 48US || ch > 57US) {
+                    return false
+                }
+                i = i + 1
+            }
+            return true
+        }
+
+        private fun parseScalar(raw: String): YamlValue {
+            var len = raw.getLength()
+            if (len >= 2 && raw.characterAt(0UI) == 34US && raw.characterAt((len - 1).toUInt()) == 34US) {
+                return YamlValue.fromString(raw.substring(1UI, (len - 2).toUInt()))
+            } else if (len >= 2 && raw.characterAt(0UI) == 39US && raw.characterAt((len - 1).toUInt()) == 39US) {
+                return YamlValue.fromString(raw.substring(1UI, (len - 2).toUInt()))
+            } else if (raw == "true" || raw == "yes" || raw == "on") {
+                return YamlValue.fromBool(true)
+            } else if (raw == "false" || raw == "no" || raw == "off") {
+                return YamlValue.fromBool(false)
+            } else if (raw == "null" || raw == "~" || raw == "") {
+                return YamlValue.fromNull()
+            } else if (this.isNumberString(raw)) {
+                return YamlValue.fromNumber(raw)
+            } else {
+                return YamlValue.fromString(raw)
+            }
+        }
+
+        private fun parseValue(indent: Int): YamlValue {
+            this.skipEmptyAndCommentLines()
+
+            if (!this.parser.hasMore()) {
+                return YamlValue.fromNull()
+            }
+
+            var c = this.peekNonSpaceChar()
+
+            // Sequence at this indent
+            if (c == YamlParser.dash) {
+                return YamlValue.fromArray(this.parseSequence(indent))
+            }
+
+            // Otherwise try to parse as a mapping (key: value lines)
+            // We try to read a line and detect if it contains ':'
+            var line = this.parser.parseUntil((ch) => return ch == 10US || ch == 13US)
+            this.skipLineEnding()
+            var trimmed = line.trim()
+
+            var colonPos = trimmed.indexOf(":")
+            if (colonPos >= 0 && colonPos < trimmed.getLength() - 1) {
+                // Has a colon with something after it — it's a key: value line
+                // Build a mapping by re-processing this line and subsequent lines
+                var obj = new YamlObject()
+                this.processMappingLine(trimmed, indent, obj)
+
+                // Continue reading lines at the same indent level
+                while (this.parser.hasMore()) {
+                    this.skipEmptyAndCommentLines()
+                    if (!this.parser.hasMore()) {
+                        break
+                    }
+
+                    // Check current indent
+                    var currentIndent = this.peekIndent()
+                    if (currentIndent < indent) {
+                        break
+                    }
+                    if (currentIndent > indent) {
+                        break
+                    }
+
+                    var nextLine = this.parser.parseUntil((ch) => return ch == 10US || ch == 13US)
+                    this.skipLineEnding()
+                    var nextTrimmed = nextLine.trim()
+
+                    if (nextTrimmed.getLength() == 0 || nextTrimmed.startsWith("#")) {
+                        // skip
+                    } else {
+                        this.processMappingLine(nextTrimmed, indent, obj)
+                    }
+                }
+                return YamlValue.fromObject(obj)
+            } else if (colonPos == trimmed.getLength() - 1) {
+                // "key:" with nothing after — value is a nested block
+                var obj = new YamlObject()
+                var key = trimmed.substring(0UI, colonPos.toUInt()).trim()
+                var childIndent = indent + 2
+                var childValue = this.parseValue(childIndent)
+                obj.putValue(key, childValue)
+
+                while (this.parser.hasMore()) {
+                    this.skipEmptyAndCommentLines()
+                    if (!this.parser.hasMore()) {
+                        break
+                    }
+
+                    var currentIndent = this.peekIndent()
+                    if (currentIndent < indent) {
+                        break
+                    }
+                    if (currentIndent > indent) {
+                        break
+                    }
+
+                    var nextLine = this.parser.parseUntil((ch) => return ch == 10US || ch == 13US)
+                    this.skipLineEnding()
+                    var nextTrimmed = nextLine.trim()
+
+                    if (nextTrimmed.getLength() == 0 || nextTrimmed.startsWith("#")) {
+                        // skip
+                    } else {
+                        this.processMappingLine(nextTrimmed, indent, obj)
+                    }
+                }
+                return YamlValue.fromObject(obj)
+            } else {
+                // Plain scalar
+                return this.parseScalar(trimmed)
+            }
+        }
+
+        private fun peekIndent(): Int {
+            var peeked = this.parser.peek(128UI)
+            var count = 0
+            var i = 0
+            while (i < peeked.getLength()) {
+                var ch = peeked.characterAt(i.toUInt())
+                if (ch == 32US) {
+                    count = count + 1
+                } else if (ch == 9US) {
+                    count = count + 2
+                } else {
+                    break
+                }
+                i = i + 1
+            }
+            return count
+        }
+
+        private fun processMappingLine(line: String, indent: Int, obj: YamlObject) {
+            var colonPos = line.indexOf(":")
+            if (colonPos < 0) {
+                // No colon - skip non-mapping line
+                return
+            }
+
+            var key = line.substring(0UI, colonPos.toUInt()).trim()
+
+            if (colonPos + 1 >= line.getLength()) {
+                // "key:" — value is nested block
+                var childIndent = indent + 2
+                this.skipEmptyAndCommentLines()
+                if (this.parser.hasMore()) {
+                    var nextC = this.peekNonSpaceChar()
+                    if (nextC == YamlParser.dash) {
+                        obj.putValue(key, YamlValue.fromArray(this.parseSequence(childIndent)))
+                    } else {
+                        obj.putValue(key, this.parseValue(childIndent))
+                    }
+                } else {
+                    obj.putNull(key)
+                }
+            } else {
+                var afterColon = colonPos + 1
+                var restLen = line.getLength() - afterColon
+                var rest = line.substring(afterColon.toUInt(), restLen.toUInt()).trim()
+                var hashIdx = rest.indexOf(" #")
+                if (hashIdx >= 0) {
+                    rest = rest.substring(0UI, hashIdx.toUInt()).trim()
+                }
+                obj.putValue(key, this.parseScalar(rest))
+            }
+        }
+
+        private fun parseSequence(indent: Int): YamlArray {
+            var arr = new YamlArray()
+
+            while (this.parser.hasMore()) {
+                this.skipEmptyAndCommentLines()
+                if (!this.parser.hasMore()) {
+                    break
+                }
+
+                var currentIndent = this.peekIndent()
+                if (currentIndent < indent) {
+                    break
+                }
+
+                // Skip leading spaces to reach '-'
+                this.skipSpaces()
+
+                var c = this.parser.peekChar()
+                if (c != YamlParser.dash) {
+                    break
+                }
+
+                // consume '-'
+                this.parser.skip(1UI)
+
+                // skip space after '-'
+                var afterDash = this.parser.peekChar()
+                if (afterDash == YamlParser.space) {
+                    this.parser.skip(1UI)
+                }
+
+                // Read the rest of the line
+                var line = this.parser.parseUntil((ch) => return ch == 10US || ch == 13US)
+                this.skipLineEnding()
+                var trimmed = line.trim()
+
+                if (trimmed.getLength() == 0) {
+                    // Value is a nested block at next indent
+                    var childIndent = indent + 2
+                    arr.addValue(this.parseValue(childIndent))
+                } else {
+                    var colonPos = trimmed.indexOf(":")
+                    if (colonPos >= 0) {
+                        // Inline mapping within sequence item
+                        var itemObj = new YamlObject()
+                        this.processMappingLine(trimmed, indent + 2, itemObj)
+
+                        // Read additional lines of this mapping item
+                        while (this.parser.hasMore()) {
+                            this.skipEmptyAndCommentLines()
+                            if (!this.parser.hasMore()) {
+                                break
+                            }
+                            var nextIndent = this.peekIndent()
+                            if (nextIndent <= indent) {
+                                break
+                            }
+                            var nextLine = this.parser.parseUntil((ch) => return ch == 10US || ch == 13US)
+                            this.skipLineEnding()
+                            var nextTrimmed = nextLine.trim()
+                            if (nextTrimmed.getLength() > 0 && !nextTrimmed.startsWith("#")) {
+                                this.processMappingLine(nextTrimmed, indent + 2, itemObj)
+                            }
+                        }
+                        arr.addValue(YamlValue.fromObject(itemObj))
+                    } else {
+                        arr.addValue(this.parseScalar(trimmed))
+                    }
+                }
+            }
+
+            return arr
+        }
+
+        private fun skipSpaces() {
+            var go = true
+            while (go && this.parser.hasMore()) {
+                var c = this.parser.peekChar()
+                if (c == YamlParser.space || c == YamlParser.tab) {
+                    this.parser.skip(1UI)
+                } else {
+                    go = false
+                }
+            }
+        }
+
+        private fun peekNonSpaceChar(): UShort {
+            var peeked = this.parser.peek(128UI)
+            var i = 0
+            while (i < peeked.getLength()) {
+                var ch = peeked.characterAt(i.toUInt())
+                if (ch != 32US && ch != 9US) {
+                    return ch
+                }
+                i = i + 1
+            }
+            return 0US
+        }
+    }
+}
