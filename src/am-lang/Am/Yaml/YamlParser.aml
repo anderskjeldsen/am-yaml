@@ -158,8 +158,13 @@ namespace Am.Yaml {
                 var obj = new YamlObject()
                 var key = trimmed.substring(0UI, colonPos.toUInt()).trim()
                 var childIndent = indent + 2
-                var childValue = this.parseValue(childIndent)
-                obj.putValue(key, childValue)
+                this.skipEmptyAndCommentLines()
+                if (this.parser.hasMore() && this.peekIndent() >= childIndent) {
+                    var childValue = this.parseValue(childIndent)
+                    obj.putValue(key, childValue)
+                } else {
+                    obj.putNull(key)
+                }
 
                 while (this.parser.hasMore()) {
                     this.skipEmptyAndCommentLines()
@@ -223,7 +228,7 @@ namespace Am.Yaml {
                 // "key:" — value is nested block
                 var childIndent = indent + 2
                 this.skipEmptyAndCommentLines()
-                if (this.parser.hasMore()) {
+                if (this.parser.hasMore() && this.peekIndent() >= childIndent) {
                     var nextC = this.peekNonSpaceChar()
                     if (nextC == YamlParser.dash) {
                         obj.putValue(key, YamlValue.fromArray(this.parseSequence(childIndent)))
