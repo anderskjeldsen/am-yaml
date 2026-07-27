@@ -44,10 +44,40 @@ namespace Am.Yaml {
                     this.parser.skip(1UI)
                 } else if (c == YamlParser.hash) {
                     this.skipLine()
+                } else if (c == YamlParser.space || c == YamlParser.tab) {
+                    // A line may be an INDENTED comment (`  # ...`). YAML allows
+                    // comments at any indent, so peek past the leading whitespace:
+                    // if the first non-blank char is '#', drop the whole line;
+                    // otherwise it is real indented content — stop here so indent
+                    // detection sees it.
+                    var firstNonSpace = this.peekFirstNonSpaceOnLine()
+                    if (firstNonSpace == YamlParser.hash) {
+                        this.skipLine()
+                    } else {
+                        go = false
+                    }
                 } else {
                     go = false
                 }
             }
+        }
+
+        // First non-space/tab char on the current line, or newline (10) if the
+        // line is blank. Does not advance the parser.
+        private fun peekFirstNonSpaceOnLine(): UShort {
+            var peeked = this.parser.peek(128UI)
+            var i = 0
+            while (i < peeked.getLength()) {
+                var ch = peeked.characterAt(i.toUInt())
+                if (ch == YamlParser.newLine || ch == YamlParser.carriageReturn) {
+                    return YamlParser.newLine
+                }
+                if (ch != YamlParser.space && ch != YamlParser.tab) {
+                    return ch
+                }
+                i = i + 1
+            }
+            return 0US
         }
 
         private fun isNumberString(s: String): Bool {
@@ -82,9 +112,17 @@ namespace Am.Yaml {
 
         private fun parseScalar(raw: String): YamlValue {
             var len = raw.getLength()
-            if (len >= 2 && raw.characterAt(0UI) == 34US && raw.characterAt((len - 1).toUInt()) == 34US) {
+            // Guard-then-read: keeps the char reads out of compound conditions
+            // (v2's renderer evaluates && operands eagerly for spilled calls).
+            var firstCh = 0US
+            var lastCh = 0US
+            if (len >= 2) {
+                firstCh = raw.characterAt(0UI)
+                lastCh = raw.characterAt((len - 1).toUInt())
+            }
+            if (len >= 2 && firstCh == 34US && lastCh == 34US) {
                 return YamlValue.fromString(raw.substring(1UI, (len - 2).toUInt()))
-            } else if (len >= 2 && raw.characterAt(0UI) == 39US && raw.characterAt((len - 1).toUInt()) == 39US) {
+            } else if (len >= 2 && firstCh == 39US && lastCh == 39US) {
                 return YamlValue.fromString(raw.substring(1UI, (len - 2).toUInt()))
             } else if (raw == "true" || raw == "yes" || raw == "on") {
                 return YamlValue.fromBool(true)
@@ -285,6 +323,16 @@ namespace Am.Yaml {
                 var line = this.parser.parseUntil((ch) => return ch == 10US || ch == 13US)
                 this.skipLineEnding()
                 var trimmed = line.trim()
+
+                // Strip a trailing ` # comment` (YAML starts a comment at '#'
+                // only when it is preceded by whitespace). Do this before the
+                // colon check below so a comment containing ':' is not mistaken
+                // for an inline mapping, and so scalar items like
+                // `- -pthread   # note` yield just `-pthread`.
+                var seqHashIdx = trimmed.indexOf(" #")
+                if (seqHashIdx >= 0) {
+                    trimmed = trimmed.substring(0UI, seqHashIdx.toUInt()).trim()
+                }
 
                 if (trimmed.getLength() == 0) {
                     // Value is a nested block at next indent
