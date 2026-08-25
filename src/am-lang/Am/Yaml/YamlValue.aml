@@ -172,24 +172,28 @@ namespace Am.Yaml {
         }
 
         override fun toString(): String {
-            if (this.type == YamlValueType.stringType) {
-                return this.asString()
-            } else if (this.type == YamlValueType.numberType) {
-                return this.value as String
-            } else if (this.type == YamlValueType.boolType) {
-                if (this.asBool()) {
-                    return "true"
+            try {
+                if (this.type == YamlValueType.stringType) {
+                    return this.asString()
+                } else if (this.type == YamlValueType.numberType) {
+                    return this.value as String
+                } else if (this.type == YamlValueType.boolType) {
+                    if (this.asBool()) {
+                        return "true"
+                    } else {
+                        return "false"
+                    }
+                } else if (this.type == YamlValueType.nullType) {
+                    return "null"
+                } else if (this.type == YamlValueType.objectType) {
+                    return this.asObject().toString()
+                } else if (this.type == YamlValueType.arrayType) {
+                    return this.asArray().toString()
                 } else {
-                    return "false"
+                    return "unknown"
                 }
-            } else if (this.type == YamlValueType.nullType) {
-                return "null"
-            } else if (this.type == YamlValueType.objectType) {
-                return this.asObject().toString()
-            } else if (this.type == YamlValueType.arrayType) {
-                return this.asArray().toString()
-            } else {
-                return "unknown"
+            } catch (e: Exception) {
+                return ""
             }
         }
     }

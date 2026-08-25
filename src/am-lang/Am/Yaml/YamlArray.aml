@@ -93,26 +93,30 @@ namespace Am.Yaml {
         }
 
         override fun toString(): String {
-            var result = "["
-            var first = true
-
-            var i = 0
-            while (i < this.elements.getSize()) {
-                var value = this.elements.get(i)
-
-                if (!first) {
-                    result = result + ", "
+            try {
+                var result = "["
+                var first = true
+    
+                var i = 0
+                while (i < this.elements.getSize()) {
+                    var value = this.elements.get(i)
+    
+                    if (!first) {
+                        result = result + ", "
+                    }
+    
+                    if (value != null) {
+                        result = result + value.toString()
+                    }
+                    first = false
+                    i = i + 1
                 }
-
-                if (value != null) {
-                    result = result + value.toString()
-                }
-                first = false
-                i = i + 1
+    
+                result = result + "]"
+                return result
+            } catch (e: Exception) {
+                return ""
             }
-
-            result = result + "]"
-            return result
         }
     }
 }
