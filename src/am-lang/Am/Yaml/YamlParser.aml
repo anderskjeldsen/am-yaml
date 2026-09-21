@@ -307,6 +307,31 @@ namespace Am.Yaml {
 
                 var c = this.parser.peekChar()
                 if (c != YamlParser.dash) {
+                    // A non-dash line still at (or past) the sequence's own
+                    // indent cannot belong to the sequence -- a sibling item
+                    // must start with '-', and a real dedent to the parent
+                    // would have indent < this level and broken out above.
+                    // So this is a MALFORMED line that we are about to drop
+                    // in silence. That is exactly what happens when a field
+                    // meant to nest under a `- id:` item is indented with a
+                    // single tab: peekIndent scores a tab as 2, the same as a
+                    // 2-space sequence, so `gccCommand:` lands level with the
+                    // dash and vanishes with no error and a mystery default.
+                    // Warn, naming the line, instead of hiding it.
+                    var strayPeek: String = this.parser.peek(80UI)
+                    var strayLine: String = strayPeek
+                    var nlIdx: Int = strayPeek.indexOf("\n")
+                    if (nlIdx >= 0) {
+                        strayLine = strayPeek.substring(0UI, nlIdx.toUInt())
+                    }
+                    var strayTrim: String = strayLine.trim()
+                    if (strayTrim.getLength() > 0 && strayTrim.indexOf(":") >= 0) {
+                        ("Warning: YAML line is indented level with the '- ' it"
+                            + " should nest under, so it is being IGNORED: '"
+                            + strayTrim + "'. Indent it deeper than the dash"
+                            + " (a single tab counts as 2, the same as 2 spaces"
+                            + " -- use 4 spaces or 2-spaces-plus-a-tab).").println()
+                    }
                     break
                 }
 

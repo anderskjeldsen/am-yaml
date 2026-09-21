@@ -20,6 +20,27 @@ namespace Am.Yaml.Tests {
             Assert.assertTrue(age == "30")
         }
 
+        // A sequence item field indented DEEPER than the dash is kept; the
+        // same field indented only level with the dash (the single-tab
+        // collision, tab==2==2-space sequence indent) is NOT silently
+        // swallowed into nothing -- the deeper-indented sibling still works.
+        // Pins the fix for the am-yaml silent-drop bug.
+        test sequenceItemFieldNeedsDeeperIndentThanDash() {
+            var newlineBytes: UByte[] = [10UB]
+            var nl: String = String.fromBytes(newlineBytes, "UTF-8")
+            // buildTargets:\n  - id: x\n    gccCommand: am-cc  (4-space field)
+            var good: String = "buildTargets:" + nl
+                + "  - id: x" + nl
+                + "    gccCommand: am-cc" + nl
+            var tp1: TextParser = new TextParser(good)
+            var root1 = new YamlParser(tp1).parse()
+            var arr1: YamlArray = root1.asObject().getArray("buildTargets")
+            Assert.assertTrue(arr1.size() == 1)
+            var item1: YamlObject = arr1.getObject(0)
+            Assert.assertTrue(item1.getString("id") == "x")
+            Assert.assertTrue(item1.getString("gccCommand") == "am-cc")
+        }
+
         test parseSimpleSequence() {
             var newlineBytes: UByte[] = [10UB]
             var nl: String = String.fromBytes(newlineBytes, "UTF-8")
